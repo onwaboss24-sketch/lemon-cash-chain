@@ -30,7 +30,7 @@ export default function Dashboard() {
         <div style={{border: '2px solid #10b981', borderRadius: '12px', padding: '24px'}}>
           <h3>Project 1: LEMON CHAIN MLM</h3>
           <p>Start campaigns, earn $15 per 5 directs</p>
-          <button style={{background: '#10b981', color: 'white', padding: '12px 24px', border: 'none', borderRadius: '6px', cursor: 'pointer', marginTop: '12px'}}>
+          <button onClick={() => router.push('/lemon-chain')} style={{background: '#10b981', color: 'white', padding: '12px 24px', border: 'none', borderRadius: '6px', cursor: 'pointer', marginTop: '12px'}}>
             Enter LEMON CHAIN
           </button>
         </div>
