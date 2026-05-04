@@ -1,56 +1,69 @@
-import { neon } from '@neondatabase/serverless';
-import bcrypt from 'bcryptjs';
+'use client'
+import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 
-const sql = neon(process.env.DATABASE_URL);
+export default function AuthPage() {
+  const [isLogin, setIsLogin] = useState(true)
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [msg, setMsg] = useState('')
+  const router = useRouter()
 
-// Auto-create tables on first run
-export async function initDB() {
-  await sql`
-    CREATE TABLE IF NOT EXISTS users (
-      id SERIAL PRIMARY KEY,
-      email TEXT UNIQUE NOT NULL,
-      password TEXT NOT NULL,
-      created_at TIMESTAMP DEFAULT NOW()
-    );
-  `;
-  await sql`
-    CREATE TABLE IF NOT EXISTS campaigns (
-      id SERIAL PRIMARY KEY,
-      user_id INTEGER REFERENCES users(id),
-      wallet_address TEXT NOT NULL,
-      tx_hash TEXT UNIQUE,
-      amount INTEGER DEFAULT 7000000,
-      status TEXT DEFAULT 'pending',
-      referrer_id INTEGER,
-      created_at TIMESTAMP DEFAULT NOW()
-    );
-  `;
-}
+  useEffect(() => {
+    if (localStorage.getItem('user')) router.push('/dashboard')
+  }, [])
 
-// Signup
-export async function createUser(email, password) {
-  const hashed = await bcrypt.hash(password, 10);
-  const [user] = await sql`INSERT INTO users (email, password) VALUES (${email}, ${hashed}) RETURNING id, email`;
-  return user;
-}
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    setMsg('Loading...')
+    
+    const res = await fetch(`/api/${isLogin ? 'login' : 'signup'}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password })
+    })
+    const data = await res.json()
+    
+    if (data.success) {
+      localStorage.setItem('user', JSON.stringify(data.user))
+      router.push('/dashboard')
+    } else {
+      setMsg(data.error)
+    }
+  }
 
-// Login
-export async function getUserByEmail(email) {
-  const [user] = await sql`SELECT * FROM users WHERE email = ${email}`;
-  return user;
-}
-
-// Save $7 payment
-export async function createCampaign(userId, walletAddress, txHash, referrerId = null) {
-  const [campaign] = await sql`
-    INSERT INTO campaigns (user_id, wallet_address, tx_hash, referrer_id, status)
-    VALUES (${userId}, ${walletAddress}, ${txHash}, ${referrerId}, 'active')
-    RETURNING *
-  `;
-  return campaign;
-}
-
-// Get user campaigns
-export async function getUserCampaigns(userId) {
-  return await sql`SELECT * FROM campaigns WHERE user_id = ${userId} ORDER BY created_at DESC`;
+  return (
+    <main style={{padding: '40px 20px', maxWidth: '400px', margin: '0 auto', fontFamily: 'Arial'}}>
+      <h1 style={{color: '#10b981'}}>🍋 LEMON CHAIN</h1>
+      <h2>{isLogin ? 'Login' : 'Create Account'}</h2>
+      
+      <form onSubmit={handleSubmit}>
+        <input 
+          type="email" placeholder="Email" value={email}
+          onChange={(e) => setEmail(e.target.value)} required
+          style={{width: '100%', padding: '12px', margin: '8px 0', borderRadius: '6px', border: '1px solid #ccc'}}
+        />
+        <input 
+          type="password" placeholder="Password" value={password}
+          onChange={(e) => setPassword(e.target.value)} required
+          style={{width: '100%', padding: '12px', margin: '8px 0', borderRadius: '6px', border: '1px solid #ccc'}}
+        />
+        <button type="submit" style={{
+          width: '100%', background: '#10b981', color: 'white', 
+          padding: '12px', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold'
+        }}>
+          {isLogin ? 'Login' : 'Create Account'}
+        </button>
+      </form>
+      
+      <p style={{marginTop: '20px', textAlign: 'center'}}>
+        {isLogin ? "No account? " : "Have account? "}
+        <span onClick={() => setIsLogin(!isLogin)} style={{color: '#10b981', cursor: 'pointer', fontWeight: 'bold'}}>
+          {isLogin ? 'Sign Up' : 'Login'}
+        </span>
+      </p>
+      
+      {msg && <p style={{color: msg.includes('Loading') ? '#666' : '#dc2626', textAlign: 'center'}}>{msg}</p>}
+    </main>
+  )
 }
